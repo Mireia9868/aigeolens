@@ -120,17 +120,39 @@ PERPLEXITY_API_KEY = os.getenv("PERPLEXITY_API_KEY") # Perplexity
 
 将来的には複数AIモデルでクロスチェックし、各エンジンでの可視性を個別に測定する機能を実装予定。
 
-## 🌐 デプロイ
+## 🌐 デプロイ (Railway)
+
+### 1. GitHubにプッシュ
+```bash
+cd geo-mvp
+git remote add origin git@github.com:YOUR_USERNAME/aigeolens.git
+git push -u origin main
+```
+
+### 2. Railwayでデプロイ
+1. https://railway.app にログイン（GitHubアカウントでOK）
+2. New Project → Deploy from GitHub repo → `aigeolens` を選択
+3. Settings → Environment Variables で以下を設定:
+   ```
+   DEEPSEEK_API_KEY=sk-xxxxxxxxxxxxxxxxxxxx
+   DEBUG=false
+   ```
+4. 自動デプロイ開始（Procfileを自動検出）
+
+### 3. カスタムドメイン設定
+1. Railway Settings → Networking → Generate Domain（仮URL取得）
+2. Custom Domain追加: `aigeolens.com`
+3. DNSレコード設定（ドメイン registrar側）:
+   ```
+   CNAME  @  xxxxx.up.railway.app
+   CNAME  www xxxxx.up.railway.app
+   ```
+4. SSL証明書はRailwayが自動生成
 
 ### ローカル開発
 ```bash
 python app.py  # http://localhost:5000
 ```
-
-### 本番デプロイ候補
-- **Vercel + Flask**: フロントエンドをVercel静的ホスティング、APIをServerless Functions
-- **Railway / Render**: Flask appをそのままデプロイ、最も簡単
-- **Cloud Run**: Docker化してGoogle Cloud Runにデプロイ
 
 ## 📊 料金プラン（計画）
 
@@ -143,8 +165,9 @@ python app.py  # http://localhost:5000
 
 ## 🎯 次のステップ
 
-- [ ] DeepSeek API Keyを設定してライブモードでテスト
-- [ ] ドメイン取得: aigeolens.com
+- [x] DeepSeek API Keyを設定してライブモードでテスト
+- [x] ドメイン取得: aigeolens.com
+- [ ] Railway デプロイ + カスタムドメイン設定
 - [ ] Product Hunt ローンチ準備
 - [ ] 日本語SEO記事をQiita/Noteに投稿
 - [ ] 日本のSEO代理店5社に白ラベル提案
