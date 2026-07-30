@@ -1,18 +1,32 @@
 /**
- * GEO MVP - Frontend JavaScript
- * Two-step funnel: Free scan -> Lead capture -> Unlock full report
+ * AI GeoLens — Frontend JavaScript
+ * Flow: Free scan → Choose plan → Stripe checkout → Full report
  */
 
 const API_BASE = window.location.origin;
 
 // State
 let pendingScanData = null;
+let pendingPlan = "audit";
+
+// Plan display info
+const PLAN_INFO = {
+  audit: { name: "お試し診断", price: "¥4,980", desc: "完全版GEO診断レポート（単発）" },
+  pro: { name: "プロプラン", price: "¥9,800/月", desc: "月10回の詳細診断・継続モニタリング" },
+  business: { name: "ビジネスプラン", price: "¥29,800/月", desc: "無制限診断・API・ホワイトラベル対応" },
+};
 
 // === URL Form Submission (Step 1: Free Scan) ===
 document.addEventListener("DOMContentLoaded", () => {
   const form = document.getElementById("url-form");
   if (form) {
     form.addEventListener("submit", handleScan);
+  }
+
+  // Checkout form handler
+  const checkoutForm = document.getElementById("checkout-form");
+  if (checkoutForm) {
+    checkoutForm.addEventListener("submit", handleCheckoutSubmit);
   }
 });
 
@@ -24,7 +38,7 @@ async function handleScan(e) {
   const brand = brandInput ? brandInput.value.trim() : "";
 
   if (!url) {
-    alert("URL\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002");
+    alert("URLを入力してください。");
     return;
   }
 
@@ -46,13 +60,13 @@ async function handleScan(e) {
     pendingScanData = { url, brand, ...data };
     renderScanResult(pendingScanData);
   } catch (err) {
-    alert("\u30b9\u30ad\u30e3\u30f3\u4e2d\u306b\u30a8\u30e9\u30fc\u304c\u767a\u751f\u3057\u307e\u3057\u305f: " + err.message);
+    alert("スキャン中にエラーが発生しました: " + err.message);
   } finally {
     hideLoading();
   }
 }
 
-// === Step 1 Result: Show Partial Score + Lead Capture Form ===
+// === Step 1 Result: Show Partial Score + Plan Selection ===
 function renderScanResult(data) {
   const section = document.getElementById("report-section");
   if (!section) return;
@@ -94,8 +108,8 @@ function renderScanResult(data) {
             <div class="scan-url">${data.url || ''}</div>
             <div class="level-badge" style="background: ${scoreColor}20; color: ${scoreColor};">${level}</div>
             <p class="scan-summary">
-              \u57fa\u5efa\u30c1\u30a7\u30c3\u30af: ${data.passed_checks || 0}/${data.total_checks || 15} \u9805\u76ee\u5408\u683c<br>
-              ${crawl.title ? '\u30bf\u30a4\u30c8\u30eb: ' + crawl.title : ''} ${crawl.word_count ? '\u00b7 \u6587\u5b57\u6570: ' + crawl.word_count : ''}
+              基建チェック: ${data.passed_checks || 0}/${data.total_checks || 15} 項目合格<br>
+              ${crawl.title ? 'タイトル: ' + crawl.title : ''} ${crawl.word_count ? '· 文字数: ' + crawl.word_count : ''}
             </p>
           </div>
         </div>
@@ -103,39 +117,48 @@ function renderScanResult(data) {
         <!-- Top 3 Issues -->
         ${issues.length ? `
           <div class="issues-section">
-            <h3>\u4e3b\u8981\u306a\u554f\u984c\u70b9 (TOP ${issues.length})</h3>
+            <h3>主要な問題点 (TOP ${issues.length})</h3>
             ${issuesHtml}
           </div>
-        ` : '<p class="no-issues">\u91cd\u8981\u306a\u554f\u984c\u70b9\u306f\u898b\u3064\u304b\u308a\u307e\u305b\u3093\u3067\u3057\u305f\u3002\u3057\u304b\u3057\u3001AI\u53ef\u8996\u6027\u306e\u8a73\u7d30\u5206\u6790\u304c\u5fc5\u8981\u3067\u3059\u3002</p>'}
+        ` : '<p class="no-issues">重要な問題点は見つかりませんでした。しかし、AI可視性の詳細分析が必要です。</p>'}
 
         <!-- Locked Full Report Preview -->
         <div class="locked-preview">
           <div class="locked-header">
-            <h3>\ud83d\udd10 \u5b8c\u5168\u7248GEO\u8a3a\u65ad\u30ec\u30dd\u30fc\u30c8</h3>
-            <span class="locked-tag">\u30e1\u30fc\u30eb\u767b\u9332\u3067\u89e3\u9664</span>
+            <h3>\ud83d\udd10 完全版GEO診断レポート</h3>
+            <span class="locked-tag">¥4,980〜</span>
           </div>
           <div class="preview-list">${previewHtml}</div>
         </div>
 
-        <!-- Lead Capture Form -->
+        <!-- Plan Selection -->
         <div class="lead-capture-section" id="lead-capture">
-          <h3>\u5b8c\u5168\u7248\u30ec\u30dd\u30fc\u30c8\u3092\u53d6\u5f97</h3>
-          <p class="lead-desc">\u4ee5\u4e0b\u3092\u5165\u529b\u3057\u3066\u300125+\u56e0\u5b50\u306e\u8a73\u7d30\u5206\u6790\u3001AI\u53ef\u8996\u6027\u30b9\u30b3\u30a2\u3001\u7af6\u5408\u6bd4\u8f03\u3001\u6539\u5584\u63d0\u6848\u3092\u89e3\u9664\u3057\u307e\u3059\u3002</p>
-          
-          <form id="lead-form" class="lead-form">
-            <div class="form-row">
-              <input type="email" id="email-input" placeholder="\u30e1\u30fc\u30eb\u30a2\u30c9\u30ec\u30b9" required autocomplete="email">
-              <input type="text" id="company-input" placeholder="\u4f1a\u793e\u540d" required autocomplete="organization">
-            </div>
-            <button type="submit" class="lead-submit">
-              \u5b8c\u5168\u7248\u30ec\u30dd\u30fc\u30c8\u3092\u89e3\u9664 \u2192
+          <h3>完全版レポートを取得</h3>
+          <p class="lead-desc">以下のプランから選択して、決済ページに進みます。</p>
+
+          <div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin-bottom:20px;">
+            <button class="plan-select-btn" onclick="openCheckoutModal('audit')" style="background:#fff;color:var(--primary);border:none;padding:16px 28px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:all 0.2s;flex:1;min-width:180px;">
+              <div style="font-size:13px;opacity:0.7;">単発</div>
+              <div style="font-size:20px;margin:4px 0;">¥4,980</div>
+              <div style="font-size:12px;opacity:0.7;">完全版レポート</div>
             </button>
-            <p class="lead-note">
-              \u2713 \u30af\u30ec\u30b8\u30c3\u30c8\u30ab\u30fc\u30c9\u4e0d\u8981 &nbsp;
-              \u2713 \u30b9\u30d1\u30e0\u306a\u3057 &nbsp;
-              \u2713 \u3044\u3064\u3067\u3082\u89e3\u7d04\u53ef\u80fd
-            </p>
-          </form>
+            <button class="plan-select-btn" onclick="openCheckoutModal('pro')" style="background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);padding:16px 28px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:all 0.2s;flex:1;min-width:180px;">
+              <div style="font-size:13px;opacity:0.8;">月額</div>
+              <div style="font-size:20px;margin:4px 0;">¥9,800/月</div>
+              <div style="font-size:12px;opacity:0.8;">プロプラン</div>
+            </button>
+            <button class="plan-select-btn" onclick="openCheckoutModal('business')" style="background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);padding:16px 28px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:all 0.2s;flex:1;min-width:180px;">
+              <div style="font-size:13px;opacity:0.8;">月額</div>
+              <div style="font-size:20px;margin:4px 0;">¥29,800/月</div>
+              <div style="font-size:12px;opacity:0.8;">ビジネス</div>
+            </button>
+          </div>
+
+          <p class="lead-note">
+            <span class="lock-icon">\ud83d\udd12</span> Stripe決済で安全に処理 &nbsp;
+            \u2713 キャンセルいつでも &nbsp;
+            \u2713 SSL暗号化通信
+          </p>
         </div>
       </div>
     </div>
@@ -143,38 +166,76 @@ function renderScanResult(data) {
 
   section.classList.add("active");
   section.scrollIntoView({ behavior: "smooth" });
-
-  // Attach lead form handler
-  const leadForm = document.getElementById("lead-form");
-  if (leadForm) {
-    leadForm.addEventListener("submit", handleUnlock);
-  }
 }
 
-// === Step 2: Lead Capture -> Unlock Full Report ===
-async function handleUnlock(e) {
+// === Plan Selection & Checkout Modal ===
+function setPendingPlan(plan) {
+  pendingPlan = plan;
+}
+
+function openCheckoutModal(plan) {
+  pendingPlan = plan;
+
+  if (!pendingScanData) {
+    alert("まず無料スキャンを実行してください。");
+    document.getElementById("url-form").scrollIntoView({ behavior: "smooth" });
+    return;
+  }
+
+  const info = PLAN_INFO[plan] || PLAN_INFO.audit;
+  const modal = document.getElementById("checkout-modal");
+  const desc = document.getElementById("checkout-plan-desc");
+  const summary = document.getElementById("checkout-summary");
+
+  if (desc) desc.textContent = `${info.name} — ${info.desc}`;
+  if (summary) {
+    summary.innerHTML = `
+      <div>
+        <div style="font-size:13px;color:var(--text-soft);">プラン</div>
+        <div style="font-weight:700;font-size:15px;">${info.name}</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:13px;color:var(--text-soft);">金額</div>
+        <div style="font-weight:800;font-size:20px;color:var(--primary);">${info.price}</div>
+      </div>
+    `;
+  }
+
+  if (modal) modal.classList.add("active");
+}
+
+function closeCheckoutModal() {
+  const modal = document.getElementById("checkout-modal");
+  if (modal) modal.classList.remove("active");
+}
+
+async function handleCheckoutSubmit(e) {
   e.preventDefault();
 
   if (!pendingScanData) {
-    alert("\u30b9\u30ad\u30e3\u30f3\u30c7\u30fc\u30bf\u304c\u898b\u3064\u304b\u308a\u307e\u305b\u3093\u3002\u518d\u8a3a\u65ad\u3057\u3066\u304f\u3060\u3055\u3044\u3002");
+    alert("スキャンデータが見つかりません。再度診断してください。");
     return;
   }
 
-  const email = document.getElementById("email-input").value.trim();
-  const company = document.getElementById("company-input").value.trim();
+  const email = document.getElementById("checkout-email").value.trim();
+  const company = document.getElementById("checkout-company").value.trim();
+  const btn = e.target.querySelector(".checkout-submit");
+  const btnText = document.getElementById("checkout-btn-text");
 
   if (!email || !company) {
-    alert("\u30e1\u30fc\u30eb\u30a2\u30c9\u30ec\u30b9\u3068\u4f1a\u793e\u540d\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002");
+    alert("メールアドレスと会社名を入力してください。");
     return;
   }
 
-  showLoading("analyze");
+  btn.disabled = true;
+  if (btnText) btnText.textContent = "決済ページを準備中...";
 
   try {
-    const resp = await fetch(`${API_BASE}/api/analyze`, {
+    const resp = await fetch(`${API_BASE}/api/create-checkout`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        plan: pendingPlan,
         url: pendingScanData.url,
         brand_name: pendingScanData.brand || "",
         email: email,
@@ -188,11 +249,12 @@ async function handleUnlock(e) {
       throw new Error(data.message || data.error);
     }
 
-    renderFullReport(data);
+    // Redirect to Stripe Checkout
+    window.location.href = data.checkout_url;
   } catch (err) {
-    alert("\u8a3a\u65ad\u4e2d\u306b\u30a8\u30e9\u30fc\u304c\u767a\u751f\u3057\u307e\u3057\u305f: " + err.message);
-  } finally {
-    hideLoading();
+    alert("決済の準備中にエラーが発生しました: " + err.message);
+    btn.disabled = false;
+    if (btnText) btnText.textContent = "決済ページへ進む";
   }
 }
 
@@ -201,28 +263,26 @@ function showLoading(mode) {
   const overlay = document.getElementById("loading-overlay");
   if (overlay) {
     overlay.classList.add("active");
-    // Update loading text based on mode
     const title = overlay.querySelector("h3");
     const desc = overlay.querySelector(".loading-box > p");
     const steps = overlay.querySelectorAll(".loading-steps div");
     if (mode === "scan") {
-      if (title) title.textContent = "\u30b9\u30ad\u30e3\u30f3\u4e2d...";
-      if (desc) desc.textContent = "\u30b5\u30a4\u30c8\u306e\u57fa\u5efa\u3092\u30c1\u30a7\u30c3\u30af\u3057\u3066\u3044\u307e\u3059";
-      if (steps[0]) steps[0].textContent = "\u30b5\u30a4\u30c8\u30b3\u30f3\u30c6\u30f3\u30c4\u3092\u53d6\u5f97\u4e2d";
-      if (steps[1]) steps[1].textContent = "\u69cb\u9020\u5316\u30c7\u30fc\u30bf\u3092\u30c1\u30a7\u30c3\u30af\u4e2d";
+      if (title) title.textContent = "スキャン中...";
+      if (desc) desc.textContent = "サイトの基建をチェックしています";
+      if (steps[0]) steps[0].textContent = "サイトコンテンツを取得中";
+      if (steps[1]) steps[1].textContent = "構造化データをチェック中";
       if (steps[2]) steps[2].style.display = "none";
       if (steps[3]) steps[3].style.display = "none";
     } else {
-      if (title) title.textContent = "AI\u8a3a\u65ad\u4e2d...";
-      if (desc) desc.textContent = "DeepSeek AI\u304c\u8a73\u7d30\u5206\u6790\u3092\u5b9f\u884c\u3057\u3066\u3044\u307e\u3059";
-      if (steps[0]) { steps[0].textContent = "\u30b5\u30a4\u30c8\u30b3\u30f3\u30c6\u30f3\u30c4\u3092\u53d6\u5f97\u4e2d"; steps[0].style.display = ""; }
-      if (steps[1]) { steps[1].textContent = "\u69cb\u9020\u5316\u30c7\u30fc\u30bf\u3092\u30c1\u30a7\u30c3\u30af\u4e2d"; steps[1].style.display = ""; }
-      if (steps[2]) { steps[2].textContent = "AI\u53ef\u8996\u6027\u3092\u30b7\u30df\u30e5\u30ec\u30fc\u30b7\u30e7\u30f3\u4e2d"; steps[2].style.display = ""; }
-      if (steps[3]) { steps[3].textContent = "\u6539\u5584\u63d0\u6848\u3092\u751f\u6210\u4e2d"; steps[3].style.display = ""; }
+      if (title) title.textContent = "AI診断中...";
+      if (desc) desc.textContent = "DeepSeek AIが詳細分析を実行しています";
+      if (steps[0]) { steps[0].textContent = "サイトコンテンツを取得中"; steps[0].style.display = ""; }
+      if (steps[1]) { steps[1].textContent = "構造化データをチェック中"; steps[1].style.display = ""; }
+      if (steps[2]) { steps[2].textContent = "AI可視性をシミュレーション中"; steps[2].style.display = ""; }
+      if (steps[3]) { steps[3].textContent = "改善提案を生成中"; steps[3].style.display = ""; }
     }
   }
 
-  // Animate steps
   const steps = document.querySelectorAll(".loading-steps div");
   const visibleSteps = Array.from(steps).filter(s => s.style.display !== "none");
   steps.forEach((s, i) => {
@@ -260,7 +320,6 @@ function renderFullReport(data) {
   const checks = s1.checks || [];
   const recs = s4.recommendations || [];
 
-  // AI Visibility dimensions
   let aiDimsHtml = "";
   if (s2.dimensions) {
     aiDimsHtml = Object.entries(s2.dimensions).map(([key, val]) => `
@@ -294,14 +353,13 @@ function renderFullReport(data) {
 
   let recsHtml = recs.map(r => `
     <div class="rec-item ${r.priority || 'medium'}">
-      <div class="rec-cat">${r.category || ''} \u00b7 ${r.priority === 'high' ? '\u9ad8\u512a\u5148' : '\u4e2d\u512a\u5148'}</div>
+      <div class="rec-cat">${r.category || ''} · ${r.priority === 'high' ? '高優先' : '中優先'}</div>
       <div class="rec-title">${r.title}</div>
       <div class="rec-desc">${r.description}</div>
-      <div class="rec-meta">\u4e88\u60f3\u30a4\u30f3\u30d1\u30af\u30c8: ${r.impact || '-'} \u00b7 \u5de5\u6570: ${r.effort || '-'}</div>
+      <div class="rec-meta">想定インパクト: ${r.impact || '-'} · 工数: ${r.effort || '-'}</div>
     </div>
   `).join("");
 
-  // Competitors
   let compsHtml = "";
   if (s3.competitors && s3.competitors.length) {
     compsHtml = s3.competitors.map(c => `
@@ -313,7 +371,6 @@ function renderFullReport(data) {
     `).join("");
   }
 
-  // AI cited queries
   let citedQueriesHtml = "";
   if (s2.likely_cited_queries && s2.likely_cited_queries.length) {
     citedQueriesHtml = s2.likely_cited_queries.map(q => `<span class="query-tag positive">${q}</span>`).join("");
@@ -321,54 +378,51 @@ function renderFullReport(data) {
 
   const mode = s4.mode === "live" ? '<span style="color:#22c55e;font-size:12px;">\u25cf Live AI Analysis</span>' : '<span style="color:#f59e0b;font-size:12px;">\u25cf Demo Mode</span>';
 
+  const paymentInfo = data.payment ? `<div style="font-size:12px;color:var(--text-soft);margin-top:8px;">決済プラン: ${data.payment.plan} · ${data.payment.amount} ${data.payment.currency?.toUpperCase()}</div>` : '';
+
   section.innerHTML = `
     <div class="container">
       <div class="report-card">
         <div class="report-header">
           ${mode}
           <div class="score-circle ${scoreClass}">${score}</div>
-          <h2>GEO \u5b8c\u5168\u8a3a\u65ad\u30ec\u30dd\u30fc\u30c8</h2>
+          <h2>GEO 完全診断レポート</h2>
           <div class="url">${data.url || ''}</div>
           <div class="level-badge" style="background: ${levelColor}20; color: ${levelColor};">${level}</div>
+          ${paymentInfo}
         </div>
 
-        <!-- AIVO Score -->
-        <h3 class="section-h3">AIVO\u30b9\u30b3\u30a2\uff08AI\u53ef\u8996\u6027\u7dcf\u5408\u8a55\u4fa1\uff09</h3>
+        <h3 class="section-h3">AIVOスコア（AI可視性総合評価）</h3>
         <div class="dim-grid">${aivoDimsHtml}</div>
 
-        <!-- AI Visibility Detail -->
         ${aiDimsHtml ? `
-          <h3 class="section-h3">AI\u53ef\u8996\u6027\u8a73\u7d30\u5206\u6790\uff08DeepSeek AI\uff09</h3>
+          <h3 class="section-h3">AI可視性詳細分析（DeepSeek AI）</h3>
           <div class="dim-grid">${aiDimsHtml}</div>
         ` : ''}
 
-        <!-- Cited Queries -->
         ${citedQueriesHtml ? `
-          <h3 class="section-h3">AI\u304c\u53c2\u7167\u3059\u308b\u53ef\u80fd\u6027\u306e\u3042\u308b\u691c\u7d22\u30af\u30a8\u30ea</h3>
+          <h3 class="section-h3">AIが参照する可能性のある検索クエリ</h3>
           <div class="query-list">${citedQueriesHtml}</div>
         ` : ''}
 
-        <!-- Competitors -->
         ${compsHtml ? `
-          <h3 class="section-h3">\u7af6\u5408GEO\u5f37\u5ea6\u6bd4\u8f03</h3>
+          <h3 class="section-h3">競合GEO強度比較</h3>
           <div class="comp-grid">${compsHtml}</div>
         ` : ''}
 
-        <!-- Infrastructure Checks -->
         ${checks.length ? `
-          <h3 class="section-h3">\u57fa\u5efa\u30c1\u30a7\u30c3\u30af\u7d50\u679c (${s1.passed_checks || 0}/${s1.total_checks || 0})</h3>
+          <h3 class="section-h3">基建チェック結果 (${s1.passed_checks || 0}/${s1.total_checks || 0})</h3>
           <div class="checks-list">${checksHtml}</div>
         ` : ''}
 
-        <!-- Recommendations -->
         ${recs.length ? `
-          <h3 class="section-h3">\u6539\u5584\u63a8\u5968\u4e8b\u9805</h3>
+          <h3 class="section-h3">改善推奨事項</h3>
           <div class="recs-list">${recsHtml}</div>
         ` : ''}
 
         <div class="report-actions">
-          <a href="#url-form" onclick="resetForm()">\u518d\u8a3a\u65ad</a>
-          <a href="#" class="secondary" onclick="downloadReport(${JSON.stringify(data).replace(/"/g, '&quot;')}); return false;">\u30ec\u30dd\u30fc\u30c8\u30c0\u30a6\u30f3\u30ed\u30fc\u30c9</a>
+          <a href="#url-form" onclick="resetForm()">再診断</a>
+          <a href="#" class="secondary" onclick="downloadReport(${JSON.stringify(data).replace(/"/g, '&quot;')}); return false;">レポートダウンロード</a>
         </div>
       </div>
     </div>

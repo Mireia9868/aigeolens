@@ -1,0 +1,41 @@
+# AI GeoLens
+
+> AI GeoLens is a GEO (Generative Engine Optimization) diagnostic platform that analyzes how AI search engines like ChatGPT, Perplexity, Google Gemini, and Claude evaluate and reference your website. It scans 25+ GEO factors, generates an AIVO (AI Visibility Optimization) score, and produces actionable improvement recommendations.
+
+## What is GEO?
+
+GEO (Generative Engine Optimization) is the practice of optimizing your website content so that AI-powered search engines (ChatGPT, Perplexity, Gemini, Claude) cite and reference your brand when generating answers to user queries. Unlike traditional SEO which focuses on search result rankings, GEO focuses on being included in AI-generated responses.
+
+## Key Features
+
+- **AIVO Score**: A 0-100 score measuring your brand's AI search visibility across 4 dimensions
+- **Infrastructure Audit**: 15-point technical check (Schema.org, Open Graph, heading structure, SSL, language declaration, etc.)
+- **AI Visibility Simulation**: DeepSeek AI simulates how AI search engines evaluate your content
+- **Competitive Benchmarking**: Compare your GEO strength against 3-5 competitors
+- **Actionable Recommendations**: Priority-ranked improvement suggestions with impact estimates
+- **Japanese Content Specialization**: Specialized analysis for Japanese-language content in AI models with English-biased training data
+
+## Pricing
+
+- **Free Scan**: ¥0 — Basic GEO score, top 3 issues, 15-point infrastructure check
+- **Audit Report**: ¥4,980 (one-time) — Full 25+ factor analysis, AI visibility simulation, competitor benchmark, improvement recommendations
+- **Pro Plan**: ¥9,800/month — 10 detailed audits/month, continuous monitoring, weekly reports
+- **Business Plan**: ¥29,800/month — Unlimited audits, 5 sites, API access, white-label reports
+
+All prices in JPY (Japanese Yen), tax included. Payments processed via Stripe.
+
+## Technology
+
+- **AI Engine**: DeepSeek AI (primary), with planned integration of ChatGPT, Gemini, Perplexity, and Claude
+- **Backend**: Python Flask, gunicorn
+- **Frontend**: Pure HTML/CSS/JS, Noto Sans JP typography
+- **Payment**: Stripe Checkout (credit card, Apple Pay, Google Pay)
+
+## Target Market
+
+Initially targeting the Japanese market, with planned expansion to South Korea, Brazil, and DACH (German-speaking) regions. Japanese-language content has a 2.8x advantage in AI citation rates compared to English content due to lower competition.
+
+## Contact
+
+- Website: https://aigeolens.com
+- Payment support: Via Stripe dashboard
