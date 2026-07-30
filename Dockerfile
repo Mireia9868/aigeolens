@@ -27,5 +27,6 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD python -c "import urllib.request, os; urllib.request.urlopen(f'http://localhost:{os.environ.get(\"PORT\", 8000)}/api/health', timeout=3)"
 
-# Run with gunicorn — 2 workers, 120s timeout (DeepSeek API can take 30-60s)
-CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:8000", "--workers", "2", "--timeout", "120", "--access-logfile", "-"]
+# Railway injects PORT at runtime; use a shell-form CMD to pick it up.
+# Gunicorn binds to Railway's dynamic port; 2 workers; 120s timeout for DeepSeek API.
+CMD gunicorn app:app --bind 0.0.0.0:${PORT:-8000} --workers 2 --timeout 120 --access-logfile -
