@@ -18,18 +18,19 @@ GEO (Generative Engine Optimization) is the practice of optimizing your website 
 ## Pricing
 
 - **Free Scan**: ¥0 — Basic GEO score, top 3 issues, 15-point infrastructure check
-- **Audit Report**: ¥4,980 (one-time) — Full 25+ factor analysis, AI visibility simulation, competitor benchmark, improvement recommendations
-- **Pro Plan**: ¥9,800 (1 month) — 10 detailed audits, continuous monitoring, weekly reports
-- **Business Plan**: ¥29,800 (1 month) — Unlimited audits, 5 sites, API access, white-label reports
+- **Audit Report**: ¥4,980 (one-time) — Full 25+ factor analysis, AI visibility simulation, competitor benchmark, improvement recommendations, report download (JSON)
+- **Pro Plan**: ¥9,800 (one-time) — 3 detailed audits, competitive analysis pack
+- **Business Plan**: ¥29,800 (one-time) — 10 detailed audits, white-label reports
 
-All prices in JPY (Japanese Yen), tax included. Payments processed via PayPal.
+All prices in JPY (Japanese Yen), tax included. All plans are one-time payments (subscriptions coming soon). Payments via PayPal or bank transfer (銀行振込).
 
 ## Technology
 
 - **AI Engine**: DeepSeek AI (primary), with planned integration of ChatGPT, Gemini, Perplexity, and Claude
-- **Backend**: Python Flask, gunicorn
+- **Backend**: Python Flask, gunicorn, Flask-Limiter (rate limiting)
 - **Frontend**: Pure HTML/CSS/JS, Noto Sans JP typography
-- **Payment**: PayPal Checkout (credit card, debit card, PayPal balance)
+- **Payment**: PayPal Checkout (credit card, debit card, PayPal balance) + Bank Transfer (銀行振込)
+- **Security**: HSTS, X-Frame-Options, X-Content-Type-Options, CSP, rate limiting
 
 ## Target Market
 
@@ -38,4 +39,6 @@ Initially targeting the Japanese market, with planned expansion to South Korea, 
 ## Contact
 
 - Website: https://aigeolens.com
-- Payment support: Via PayPal dashboard
+- Email: support@aigeolens.com
+- Privacy Policy: https://aigeolens.com/privacy.html
+- Terms of Service: https://aigeolens.com/terms.html

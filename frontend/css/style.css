@@ -305,7 +305,7 @@ section { padding: 80px 0; }
   transform: translateY(-4px);
 }
 .price-card.featured::before {
-  content: "\304a\u3059\u3059\u3081";
+  content: "おすすめ";
   position: absolute;
   top: -14px; left: 50%; transform: translateX(-50%);
   background: var(--gradient);
@@ -537,6 +537,27 @@ footer {
 }
 .checkout-submit:hover { opacity: 0.9; transform: translateY(-1px); box-shadow: 0 4px 16px rgba(79,70,229,0.3); }
 .checkout-submit:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+.checkout-submit-alt {
+  width: 100%;
+  background: transparent;
+  color: var(--text-soft);
+  border: 1px solid var(--border);
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 10px;
+}
+.checkout-submit-alt:hover {
+  background: var(--card);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.checkout-submit-alt:disabled { opacity: 0.6; cursor: not-allowed; }
+
 .checkout-note {
   text-align: center;
   font-size: 12px;

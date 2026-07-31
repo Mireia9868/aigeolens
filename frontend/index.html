@@ -25,14 +25,16 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="AI GeoLens | GEO診断プラットフォーム">
   <meta name="twitter:description" content="AI検索エンジンでのブランド可視性を診断・最適化。25以上のGEO因子を分析。">
+  <meta name="twitter:image" content="https://aigeolens.com/og-image.png">
 
-  <!-- ==================== Fonts ==================== -->
+  <!-- ==================== Fonts (optimized: Noto Sans JP 400/700 only) ==================== -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
 
   <!-- ==================== Favicon ==================== -->
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔍</text></svg>">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 
   <!-- ==================== Styles ==================== -->
   <link rel="stylesheet" href="css/style.css">
@@ -45,7 +47,11 @@
     "name": "AI GeoLens",
     "url": "https://aigeolens.com",
     "description": "AI検索エンジンにおけるブランド可視性を診断・最適化するGEOプラットフォーム",
-    "sameAs": []
+    "email": "support@aigeolens.com",
+    "sameAs": [
+      "https://twitter.com/AIGeoLens",
+      "https://github.com/AIGeoLens"
+    ]
   }
   </script>
 
@@ -105,7 +111,7 @@
         "name": "AI GeoLensの料金体系はどうなっていますか？",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "フリースキャン（¥0）で基本スコアと問題点TOP3を確認できます。完全版診断レポートは¥4,980（単発）、プロプランは¥9,800/月で月10回の詳細診断と継続モニタリング、ビジネスプランは¥29,800/月で無制限診断・API・ホワイトラベル対応。お支払いはPayPal決済で、クレジットカード・デビットカード・PayPal残高に対応しています。"
+          "text": "フリースキャン（¥0）で基本スコアと問題点TOP3を確認できます。完全版診断レポートは¥4,980（単発）、プロプランは¥9,800（単発・詳細診断3回分）、ビジネスプランは¥29,800（単発・詳細診断10回分・ホワイトラベル対応）。お支払いはPayPal決済または銀行振込に対応しています。"
         }
       },
       {
@@ -128,33 +134,6 @@
   }
   </script>
 
-  <!-- ==================== JSON-LD: BreadcrumbList ==================== -->
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    "itemListElement": [
-      {
-        "@type": "ListItem",
-        "position": 1,
-        "name": "ホーム",
-        "item": "https://aigeolens.com/"
-      },
-      {
-        "@type": "ListItem",
-        "position": 2,
-        "name": "GEO診断",
-        "item": "https://aigeolens.com/#scan"
-      },
-      {
-        "@type": "ListItem",
-        "position": 3,
-        "name": "料金プラン",
-        "item": "https://aigeolens.com/#pricing"
-      }
-    ]
-  }
-  </script>
 </head>
 <body>
 
@@ -340,37 +319,37 @@
           <li>DeepSeek AI可視性シミュレーション</li>
           <li>優先順位付き改善提案</li>
           <li>競合3-5社ベンチマーク</li>
-          <li>PDFレポート出力</li>
+          <li>レポートダウンロード（JSON）</li>
         </ul>
         <a href="#url-form" class="btn" onclick="setPendingPlan('audit'); return true;">診断を依頼</a>
       </div>
       <div class="price-card">
         <div class="plan">プロプラン</div>
-        <div class="price">¥9,800<small> /1ヶ月</small></div>
+        <div class="price">¥9,800<small> /単発</small></div>
         <ul>
-          <li>月10回の詳細診断</li>
-          <li>継続的なAI可視性モニタリング</li>
-          <li>競合変動トラッキング</li>
-          <li>週次レポート自動配信</li>
-          <li>優先サポート</li>
+          <li>詳細診断3回分</li>
+          <li>AI可視性スコア詳細レポート</li>
+          <li>競合3-5社ベンチマーク</li>
+          <li>改善提案リスト</li>
+          <li>レポートダウンロード（JSON）</li>
         </ul>
         <a href="#url-form" class="btn" onclick="setPendingPlan('pro'); return true;">プロプラン開始</a>
       </div>
       <div class="price-card">
         <div class="plan">ビジネスプラン</div>
-        <div class="price">¥29,800<small> /1ヶ月</small></div>
+        <div class="price">¥29,800<small> /単発</small></div>
         <ul>
-          <li>無制限の詳細診断</li>
-          <li>5サイト監視</li>
-          <li>API アクセス</li>
+          <li>詳細診断10回分</li>
+          <li>競合10社ベンチマーク</li>
+          <li>優先順位付き改善提案</li>
           <li>ホワイトラベルレポート</li>
-          <li>専任サポート・カスタムAI設定</li>
+          <li>レポートダウンロード（JSON）</li>
         </ul>
         <a href="#url-form" class="btn" onclick="setPendingPlan('business'); return true;">ビジネス開始</a>
       </div>
     </div>
     <p class="pricing-note">
-      <small>※ 決済はPayPalを通じて安全に処理されます。クレジットカード・デビットカード・PayPal残高に対応。世界200以上の国・地域で利用可能。</small>
+      <small>※ PayPal決済（クレジットカード・デビットカード・PayPal残高）または銀行振込に対応。銀行振込の場合、入金確認後にレポートを生成します。</small>
     </p>
   </div>
 </section>
@@ -404,7 +383,7 @@
       </details>
       <details class="faq-item">
         <summary>料金体系と支払い方法を教えてください</summary>
-        <div class="answer">フリースキャンは¥0で何度でも利用可能です。完全版診断レポートは¥4,980（単発）、プロプランは¥9,800（1ヶ月分）、ビジネスプランは¥29,800（1ヶ月分）です。お支払いはPayPal決済を通じて処理され、クレジットカード（Visa/Mastercard/Amex/JCB）、デビットカード、PayPal残高に対応しています。</div>
+        <div class="answer">フリースキャンは¥0で何度でも利用可能です。完全版診断レポートは¥4,980（単発）、プロプランは¥9,800（単発・詳細診断3回分）、ビジネスプランは¥29,800（単発・詳細診断10回分・ホワイトラベル対応）です。お支払いはPayPal決済（クレジットカード・デビットカード・PayPal残高）または銀行振込に対応しています。</div>
       </details>
       <details class="faq-item">
         <summary>無料スキャンと有料診断の違いは？</summary>
@@ -428,8 +407,11 @@
   <div class="container">
     <div class="footer-grid">
       <div class="footer-col">
-        <div class="footer-logo">🔍 AI GeoLens</div>
+        <div class="footer-logo">AI GeoLens</div>
         <p>AI検索エンジンにおけるブランド可視性を診断・最適化するGEOプラットフォーム</p>
+        <p style="margin-top:12px;">
+          <a href="mailto:support@aigeolens.com" style="color:var(--text-soft);text-decoration:none;">support@aigeolens.com</a>
+        </p>
       </div>
       <div class="footer-col">
         <h4>サービス</h4>
@@ -447,10 +429,18 @@
           <li><a href="/robots.txt">robots.txt</a></li>
         </ul>
       </div>
+      <div class="footer-col">
+        <h4>法的事項</h4>
+        <ul>
+          <li><a href="/privacy.html">プライバシーポリシー</a></li>
+          <li><a href="/terms.html">利用規約</a></li>
+          <li><a href="/特定商取引法.html">特定商取引法に基づく表記</a></li>
+        </ul>
+      </div>
     </div>
     <div class="footer-bottom">
       <p>&copy; 2026 AI GeoLens. All rights reserved.</p>
-      <p>Powered by DeepSeek AI | 決済システム: PayPal</p>
+      <p>Powered by DeepSeek AI | 決済: PayPal / 銀行振込</p>
     </div>
   </div>
 </footer>
@@ -489,13 +479,20 @@
         <button type="submit" class="checkout-submit">
         <span id="checkout-btn-text">PayPal決済ページへ進む</span>
       </button>
+      <button type="button" class="checkout-submit-alt" id="bank-transfer-btn" style="display:none;">
+        銀行振込で支払う
+      </button>
       <p class="checkout-note">
         <span class="lock-icon">🔒</span> PayPal決済で安全に処理されます<br>
-        クレジットカード / デビットカード / PayPal残高
+        クレジットカード / デビットカード / PayPal残高<br>
+        <span style="font-size:11px;">銀行振込も選択可能（入金確認後にレポート生成）</span>
       </p>
     </form>
   </div>
 </div>
+
+<!-- ==================== Analytics (Plausible - privacy-friendly, no cookies) ==================== -->
+<script defer data-domain="aigeolens.com" src="https://plausible.io/js/script.js"></script>
 
 <!-- ==================== Report Section ==================== -->
 <section class="report-section" id="report-section"></section>

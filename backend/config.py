@@ -31,8 +31,20 @@ PAYPAL_CURRENCY = "JPY"
 
 # === App Settings ===
 FLASK_PORT = int(os.getenv("PORT", 5000))
-DEBUG_MODE = os.getenv("DEBUG", "true").lower() == "true"
+DEBUG_MODE = os.getenv("DEBUG", "false").lower() == "true"
 APP_URL = os.getenv("APP_URL", "https://aigeolens.com")  # for PayPal redirect URLs
+
+# === Data Storage (Railway Volume or local) ===
+DATA_DIR = os.getenv("DATA_DIR", os.path.dirname(os.path.abspath(__file__)))
+os.makedirs(DATA_DIR, exist_ok=True)
+
+# === Bank Transfer (銀行振込) — Manual payment fallback ===
+BANK_TRANSFER_ENABLED = os.getenv("BANK_TRANSFER_ENABLED", "true").lower() == "true"
+BANK_NAME = os.getenv("BANK_NAME", "三菱UFJ銀行")
+BANK_BRANCH = os.getenv("BANK_BRANCH", "")
+BANK_ACCOUNT_TYPE = os.getenv("BANK_ACCOUNT_TYPE", "普通")
+BANK_ACCOUNT_NUMBER = os.getenv("BANK_ACCOUNT_NUMBER", "")
+BANK_ACCOUNT_HOLDER = os.getenv("BANK_ACCOUNT_HOLDER", "")
 
 # === Analysis Settings ===
 MAX_CONTENT_LENGTH = 8000  # chars sent to AI per request
@@ -72,35 +84,36 @@ PRICING_PLANS = {
             "DeepSeek AI可視性シミュレーション",
             "優先順位付き改善提案",
             "競合3-5社ベンチマーク",
-            "PDFレポート出力",
+            "レポートダウンロード（JSON）",
             "1回限り",
         ],
     },
     "pro": {
         "name": "プロプラン",
         "price": 9800,
-        "description": "月次診断・継続モニタリング（1ヶ月分）",
+        "description": "詳細診断3回＋競合分析パック（単発）",
         "type": "one_time",
         "features": [
-            "月10回の詳細診断",
-            "継続的なAI可視性モニタリング",
-            "競合変動トラッキング",
-            "週次レポート自動配信",
-            "優先サポート",
+            "詳細診断3回分",
+            "AI可視性スコア詳細レポート",
+            "競合3-5社ベンチマーク",
+            "改善提案リスト",
+            "レポートダウンロード（JSON）",
+            "1回限り",
         ],
     },
     "business": {
         "name": "ビジネスプラン",
         "price": 29800,
-        "description": "代理店・ホワイトラベル対応（1ヶ月分）",
+        "description": "代理店向けホワイトラベルレポート（単発）",
         "type": "one_time",
         "features": [
-            "無制限の詳細診断",
-            "5サイト監視",
-            "API アクセス",
+            "詳細診断10回分",
+            "競合10社ベンチマーク",
+            "優先順位付き改善提案",
             "ホワイトラベルレポート",
-            "専任サポート",
-            "カスタムAIモデル設定",
+            "レポートダウンロード（JSON）",
+            "1回限り",
         ],
     },
 }

@@ -8,13 +8,17 @@ const API_BASE = window.location.origin;
 // State
 let pendingScanData = null;
 let pendingPlan = "audit";
+let lastReportData = null;
 
 // Plan display info
 const PLAN_INFO = {
   audit: { name: "お試し診断", price: "¥4,980", desc: "完全版GEO診断レポート（単発）" },
-  pro: { name: "プロプラン", price: "¥9,800", desc: "月10回の詳細診断・継続モニタリング（1ヶ月分）" },
-  business: { name: "ビジネスプラン", price: "¥29,800", desc: "無制限診断・API・ホワイトラベル対応（1ヶ月分）" },
+  pro: { name: "プロプラン", price: "¥9,800", desc: "詳細診断3回＋競合分析パック（単発）" },
+  business: { name: "ビジネスプラン", price: "¥29,800", desc: "代理店向けホワイトラベルレポート（単発）" },
 };
+
+// Payment method state
+let paymentMethod = "paypal";
 
 // === URL Form Submission (Step 1: Free Scan) ===
 document.addEventListener("DOMContentLoaded", () => {
@@ -28,6 +32,15 @@ document.addEventListener("DOMContentLoaded", () => {
   if (checkoutForm) {
     checkoutForm.addEventListener("submit", handleCheckoutSubmit);
   }
+
+  // Bank transfer button handler
+  const bankBtn = document.getElementById("bank-transfer-btn");
+  if (bankBtn) {
+    bankBtn.addEventListener("click", handleBankTransfer);
+  }
+
+  // Check PayPal availability and show bank transfer option
+  checkPaymentAvailability();
 
   // Check if returning from PayPal with report data
   const urlParams = new URLSearchParams(window.location.search);
@@ -45,6 +58,146 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 });
+
+// === Payment Availability Check ===
+async function checkPaymentAvailability() {
+  try {
+    const resp = await fetch(`${API_BASE}/api/health`);
+    const data = await resp.json();
+    const paypalEnabled = data.paypal_enabled;
+    const bankEnabled = data.bank_transfer_enabled;
+
+    const bankBtn = document.getElementById("bank-transfer-btn");
+    const submitBtn = document.querySelector(".checkout-submit");
+    const btnText = document.getElementById("checkout-btn-text");
+
+    if (bankBtn && bankEnabled) {
+      bankBtn.style.display = "block";
+    }
+
+    if (submitBtn && btnText) {
+      if (!paypalEnabled && bankEnabled) {
+        // PayPal not available — default to bank transfer
+        paymentMethod = "bank_transfer";
+        btnText.textContent = "銀行振込で申し込む";
+        submitBtn.type = "button";
+        submitBtn.removeEventListener("submit", () => {});
+        submitBtn.addEventListener("click", handleBankTransfer);
+      } else if (!paypalEnabled && !bankEnabled) {
+        btnText.textContent = "決済準備中";
+        submitBtn.disabled = true;
+      }
+    }
+  } catch (e) {
+    console.warn("Could not check payment availability:", e);
+  }
+}
+
+// === Bank Transfer Handler ===
+async function handleBankTransfer() {
+  if (!pendingScanData) {
+    alert("まず無料スキャンを実行してください。");
+    document.getElementById("url-form").scrollIntoView({ behavior: "smooth" });
+    return;
+  }
+
+  const email = document.getElementById("checkout-email").value.trim();
+  const company = document.getElementById("checkout-company").value.trim();
+
+  if (!email || !company) {
+    alert("メールアドレスと会社名を入力してください。");
+    return;
+  }
+
+  const btn = document.getElementById("bank-transfer-btn") || document.querySelector(".checkout-submit");
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "処理中...";
+  }
+
+  try {
+    const resp = await fetch(`${API_BASE}/api/bank-transfer-order`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        plan: pendingPlan,
+        url: pendingScanData.url,
+        brand_name: pendingScanData.brand || "",
+        email: email,
+        company_name: company,
+      }),
+    });
+
+    const data = await resp.json();
+
+    if (data.error) {
+      throw new Error(data.message || data.error);
+    }
+
+    // Show bank transfer instructions
+    closeCheckoutModal();
+    renderBankTransferInstructions(data);
+  } catch (err) {
+    alert("銀行振込の申し込み中にエラーが発生しました: " + err.message);
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "銀行振込で支払う";
+    }
+  }
+}
+
+// === Bank Transfer Instructions Display ===
+function renderBankTransferInstructions(data) {
+  const section = document.getElementById("report-section");
+  if (!section) return;
+
+  const bank = data.bank_details || {};
+  const instructions = data.instructions || [];
+
+  section.innerHTML = `
+    <div class="container">
+      <div class="scan-result-card" style="text-align:center;">
+        <div style="font-size:48px;margin-bottom:16px;">🏦</div>
+        <h2 style="margin-bottom:8px;">銀行振込のお申し込みを受け付けました</h2>
+        <p style="color:var(--text-soft);margin-bottom:24px;">以下の口座へお振込みください。入金確認後、レポート生成リンクをメールでお送りします。</p>
+
+        <div style="background:var(--card);border-radius:12px;padding:24px;margin:20px 0;text-align:left;max-width:500px;margin-left:auto;margin-right:auto;">
+          <div style="display:grid;grid-template-columns:auto 1fr;gap:12px 20px;font-size:15px;">
+            <div style="color:var(--text-soft);">銀行名</div>
+            <div style="font-weight:700;">${bank.bank_name || '-'}</div>
+            <div style="color:var(--text-soft);">支店</div>
+            <div style="font-weight:700;">${bank.branch || '-'}</div>
+            <div style="color:var(--text-soft);">口座種別</div>
+            <div style="font-weight:700;">${bank.account_type || '-'}</div>
+            <div style="color:var(--text-soft);">口座番号</div>
+            <div style="font-weight:700;font-size:18px;">${bank.account_number || '-'}</div>
+            <div style="color:var(--text-soft);">名義人</div>
+            <div style="font-weight:700;">${bank.account_holder || '-'}</div>
+          </div>
+          <div style="border-top:1px solid var(--border);margin-top:16px;padding-top:16px;">
+            <div style="color:var(--text-soft);font-size:13px;">振込金額</div>
+            <div style="font-weight:800;font-size:28px;color:var(--primary);">¥${data.amount.toLocaleString()}</div>
+          </div>
+        </div>
+
+        <div style="background:rgba(255,200,0,0.1);border-radius:8px;padding:16px;max-width:500px;margin:16px auto;text-align:left;">
+          <div style="font-weight:700;margin-bottom:8px;">振込時のご注意</div>
+          ${instructions.map(i => `<div style="font-size:13px;margin:4px 0;">・${i}</div>`).join("")}
+        </div>
+
+        <div style="background:var(--card);border-radius:8px;padding:12px;max-width:500px;margin:16px auto;">
+          <span style="font-size:13px;color:var(--text-soft);">注文番号:</span>
+          <span style="font-weight:700;font-family:monospace;">${data.order_ref}</span>
+        </div>
+
+        <a href="/" style="display:inline-block;background:var(--gradient);color:#fff;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:700;margin-top:16px;">ホームに戻る</a>
+      </div>
+    </div>
+  `;
+
+  section.classList.add("active");
+  section.scrollIntoView({ behavior: "smooth" });
+}
 
 async function handleScan(e) {
   e.preventDefault();
@@ -159,14 +312,14 @@ function renderScanResult(data) {
               <div style="font-size:12px;opacity:0.7;">完全版レポート</div>
             </button>
             <button class="plan-select-btn" onclick="openCheckoutModal('pro')" style="background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);padding:16px 28px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:all 0.2s;flex:1;min-width:180px;">
-              <div style="font-size:13px;opacity:0.8;">1ヶ月分</div>
+              <div style="font-size:13px;opacity:0.8;">単発</div>
               <div style="font-size:20px;margin:4px 0;">\u00a59,800</div>
-              <div style="font-size:12px;opacity:0.8;">プロプラン</div>
+              <div style="font-size:12px;opacity:0.8;">詳細診断3回分</div>
             </button>
             <button class="plan-select-btn" onclick="openCheckoutModal('business')" style="background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);padding:16px 28px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:all 0.2s;flex:1;min-width:180px;">
-              <div style="font-size:13px;opacity:0.8;">1ヶ月分</div>
+              <div style="font-size:13px;opacity:0.8;">単発</div>
               <div style="font-size:20px;margin:4px 0;">\u00a529,800</div>
-              <div style="font-size:12px;opacity:0.8;">ビジネス</div>
+              <div style="font-size:12px;opacity:0.8;">ホワイトラベル</div>
             </button>
           </div>
 
@@ -394,7 +547,10 @@ function renderFullReport(data) {
 
   const mode = s4.mode === "live" ? '<span style="color:#22c55e;font-size:12px;">\u25cf Live AI Analysis</span>' : '<span style="color:#f59e0b;font-size:12px;">\u25cf Demo Mode</span>';
 
-  const paymentInfo = data.payment ? `<div style="font-size:12px;color:var(--text-soft);margin-top:8px;">決済プラン: ${data.payment.plan} \u00b7 \u00a5${data.payment.amount.toLocaleString()} ${data.payment.currency?.toUpperCase()} (PayPal)</div>` : '';
+  const paymentInfo = data.payment ? `<div style="font-size:12px;color:var(--text-soft);margin-top:8px;">決済プラン: ${data.payment.plan} \u00b7 \u00a5${data.payment.amount.toLocaleString()} ${data.payment.currency?.toUpperCase()} (${data.payment.method || 'paypal'})</div>` : '';
+
+  // Store report data safely (no JSON in DOM)
+  lastReportData = data;
 
   section.innerHTML = `
     <div class="container">
@@ -438,7 +594,7 @@ function renderFullReport(data) {
 
         <div class="report-actions">
           <a href="#url-form" onclick="resetForm()">再診断</a>
-          <a href="#" class="secondary" onclick="downloadReport(${JSON.stringify(data).replace(/"/g, '&quot;')}); return false;">レポートダウンロード</a>
+          <a href="#" class="secondary" id="download-report-btn">レポートダウンロード</a>
         </div>
       </div>
     </div>
@@ -446,6 +602,15 @@ function renderFullReport(data) {
 
   section.classList.add("active");
   section.scrollIntoView({ behavior: "smooth" });
+
+  // Attach download handler safely (no JSON in DOM attributes)
+  const dlBtn = document.getElementById("download-report-btn");
+  if (dlBtn) {
+    dlBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      downloadReport(lastReportData);
+    });
+  }
 }
 
 function resetForm() {

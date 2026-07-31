@@ -34,6 +34,10 @@ class WebsiteCrawler:
             }
             resp = requests.get(self.url, headers=headers, timeout=CRAWL_TIMEOUT, allow_redirects=True)
             self.status_code = resp.status_code
+            # Force correct encoding: if server didn't specify charset,
+            # requests defaults to ISO-8859-1 which causes mojibake on UTF-8 pages
+            if not resp.encoding or resp.encoding.lower() == "iso-8859-1":
+                resp.encoding = resp.apparent_encoding or "utf-8"
             self.raw_html = resp.text
             self.soup = BeautifulSoup(resp.text, "lxml")
         except requests.exceptions.Timeout:
