@@ -21,18 +21,18 @@
 <script>
 const API_BASE = window.location.origin;
 
-// Get session_id from URL params
+// Get order_ref from URL params (PayPal redirects with ?order_ref=xxx&token=EC-xxx&PayerID=xxx)
 const params = new URLSearchParams(window.location.search);
-const sessionId = params.get("session_id");
+const orderRef = params.get("order_ref");
 
 async function verifyAndGenerateReport() {
   const card = document.getElementById("payment-card");
 
-  if (!sessionId) {
+  if (!orderRef) {
     card.innerHTML = `
       <div class="payment-icon">\u274c</div>
       <h2>エラーが発生しました</h2>
-      <p>セッションIDが見つかりません。サポートにお問い合わせください。</p>
+      <p>注文参照IDが見つかりません。サポートにお問い合わせください。</p>
       <a href="/" style="display:inline-block;background:var(--primary);color:#fff;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:700;margin-top:16px;">ホームに戻る</a>
     `;
     return;
@@ -42,14 +42,14 @@ async function verifyAndGenerateReport() {
   card.innerHTML = `
     <div class="payment-spinner"></div>
     <h2>決済を確認中...</h2>
-    <p>お支払いを確認し、GEO診断レポートを生成しています。<br>この処理には1〜2分かかる場合があります。</p>
+    <p>PayPal決済を確認し、GEO診断レポートを生成しています。<br>この処理には1〜2分かかる場合があります。</p>
   `;
 
   try {
     const resp = await fetch(`${API_BASE}/api/verify-payment`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ session_id: sessionId }),
+      body: JSON.stringify({ order_ref: orderRef }),
     });
 
     const data = await resp.json();
@@ -59,7 +59,6 @@ async function verifyAndGenerateReport() {
     }
 
     // Payment verified — redirect to main page with report data
-    // Store report data in sessionStorage and redirect
     sessionStorage.setItem("geo_report_data", JSON.stringify(data));
     window.location.href = "/?report=1";
   } catch (err) {
@@ -67,33 +66,14 @@ async function verifyAndGenerateReport() {
       <div class="payment-icon">\u274c</div>
       <h2>エラーが発生しました</h2>
       <p>${err.message}</p>
-      <p style="margin-top:16px;font-size:13px;color:var(--text-light);">決済が完了している場合は、サポートまでお問い合わせください。</p>
+      <p style="margin-top:16px;font-size:13px;color:var(--text-light);">決済が完了している場合は、サポートまでお問い合わせください。注文番号: ${orderRef || 'N/A'}</p>
       <a href="/" style="display:inline-block;background:var(--primary);color:#fff;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:700;margin-top:20px;">ホームに戻る</a>
     `;
   }
 }
 
-// Check if returning with report data on main page
-if (window.location.pathname === "/" && new URLSearchParams(window.location.search).get("report") === "1") {
-  const reportData = sessionStorage.getItem("geo_report_data");
-  if (reportData) {
-    sessionStorage.removeItem("geo_report_data");
-    // Render report on main page
-    window.addEventListener("DOMContentLoaded", () => {
-      try {
-        const data = JSON.parse(reportData);
-        if (typeof renderFullReport === "function") {
-          renderFullReport(data);
-        }
-      } catch (e) {
-        console.error("Failed to render report:", e);
-      }
-    });
-  }
-} else {
-  // On payment-success page — verify and generate
-  verifyAndGenerateReport();
-}
+// Start verification
+verifyAndGenerateReport();
 </script>
 
 </body>

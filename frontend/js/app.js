@@ -1,6 +1,6 @@
 /**
  * AI GeoLens — Frontend JavaScript
- * Flow: Free scan → Choose plan → Stripe checkout → Full report
+ * Flow: Free scan → Choose plan → PayPal checkout → Full report
  */
 
 const API_BASE = window.location.origin;
@@ -12,8 +12,8 @@ let pendingPlan = "audit";
 // Plan display info
 const PLAN_INFO = {
   audit: { name: "お試し診断", price: "¥4,980", desc: "完全版GEO診断レポート（単発）" },
-  pro: { name: "プロプラン", price: "¥9,800/月", desc: "月10回の詳細診断・継続モニタリング" },
-  business: { name: "ビジネスプラン", price: "¥29,800/月", desc: "無制限診断・API・ホワイトラベル対応" },
+  pro: { name: "プロプラン", price: "¥9,800", desc: "月10回の詳細診断・継続モニタリング（1ヶ月分）" },
+  business: { name: "ビジネスプラン", price: "¥29,800", desc: "無制限診断・API・ホワイトラベル対応（1ヶ月分）" },
 };
 
 // === URL Form Submission (Step 1: Free Scan) ===
@@ -27,6 +27,22 @@ document.addEventListener("DOMContentLoaded", () => {
   const checkoutForm = document.getElementById("checkout-form");
   if (checkoutForm) {
     checkoutForm.addEventListener("submit", handleCheckoutSubmit);
+  }
+
+  // Check if returning from PayPal with report data
+  const urlParams = new URLSearchParams(window.location.search);
+  const reportFlag = urlParams.get("report");
+  if (reportFlag === "1") {
+    const reportData = sessionStorage.getItem("geo_report_data");
+    if (reportData) {
+      sessionStorage.removeItem("geo_report_data");
+      try {
+        const data = JSON.parse(reportData);
+        renderFullReport(data);
+      } catch (e) {
+        console.error("Failed to render report:", e);
+      }
+    }
   }
 });
 
@@ -109,7 +125,7 @@ function renderScanResult(data) {
             <div class="level-badge" style="background: ${scoreColor}20; color: ${scoreColor};">${level}</div>
             <p class="scan-summary">
               基建チェック: ${data.passed_checks || 0}/${data.total_checks || 15} 項目合格<br>
-              ${crawl.title ? 'タイトル: ' + crawl.title : ''} ${crawl.word_count ? '· 文字数: ' + crawl.word_count : ''}
+              ${crawl.title ? 'タイトル: ' + crawl.title : ''} ${crawl.word_count ? '\u00b7 文字数: ' + crawl.word_count : ''}
             </p>
           </div>
         </div>
@@ -125,8 +141,8 @@ function renderScanResult(data) {
         <!-- Locked Full Report Preview -->
         <div class="locked-preview">
           <div class="locked-header">
-            <h3>\ud83d\udd10 完全版GEO診断レポート</h3>
-            <span class="locked-tag">¥4,980〜</span>
+            <h3>\ud83d\udd12 完全版GEO診断レポート</h3>
+            <span class="locked-tag">\u00a54,980\u301c</span>
           </div>
           <div class="preview-list">${previewHtml}</div>
         </div>
@@ -134,29 +150,29 @@ function renderScanResult(data) {
         <!-- Plan Selection -->
         <div class="lead-capture-section" id="lead-capture">
           <h3>完全版レポートを取得</h3>
-          <p class="lead-desc">以下のプランから選択して、決済ページに進みます。</p>
+          <p class="lead-desc">以下のプランから選択して、PayPal決済ページに進みます。</p>
 
           <div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin-bottom:20px;">
             <button class="plan-select-btn" onclick="openCheckoutModal('audit')" style="background:#fff;color:var(--primary);border:none;padding:16px 28px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:all 0.2s;flex:1;min-width:180px;">
               <div style="font-size:13px;opacity:0.7;">単発</div>
-              <div style="font-size:20px;margin:4px 0;">¥4,980</div>
+              <div style="font-size:20px;margin:4px 0;">\u00a54,980</div>
               <div style="font-size:12px;opacity:0.7;">完全版レポート</div>
             </button>
             <button class="plan-select-btn" onclick="openCheckoutModal('pro')" style="background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);padding:16px 28px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:all 0.2s;flex:1;min-width:180px;">
-              <div style="font-size:13px;opacity:0.8;">月額</div>
-              <div style="font-size:20px;margin:4px 0;">¥9,800/月</div>
+              <div style="font-size:13px;opacity:0.8;">1ヶ月分</div>
+              <div style="font-size:20px;margin:4px 0;">\u00a59,800</div>
               <div style="font-size:12px;opacity:0.8;">プロプラン</div>
             </button>
             <button class="plan-select-btn" onclick="openCheckoutModal('business')" style="background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);padding:16px 28px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:all 0.2s;flex:1;min-width:180px;">
-              <div style="font-size:13px;opacity:0.8;">月額</div>
-              <div style="font-size:20px;margin:4px 0;">¥29,800/月</div>
+              <div style="font-size:13px;opacity:0.8;">1ヶ月分</div>
+              <div style="font-size:20px;margin:4px 0;">\u00a529,800</div>
               <div style="font-size:12px;opacity:0.8;">ビジネス</div>
             </button>
           </div>
 
           <p class="lead-note">
-            <span class="lock-icon">\ud83d\udd12</span> Stripe決済で安全に処理 &nbsp;
-            \u2713 キャンセルいつでも &nbsp;
+            <span class="lock-icon">\ud83d\udd12</span> PayPal決済で安全に処理 &nbsp;
+            \u2713 クレジットカード / デビットカード / PayPal残高 &nbsp;
             \u2713 SSL暗号化通信
           </p>
         </div>
@@ -187,7 +203,7 @@ function openCheckoutModal(plan) {
   const desc = document.getElementById("checkout-plan-desc");
   const summary = document.getElementById("checkout-summary");
 
-  if (desc) desc.textContent = `${info.name} — ${info.desc}`;
+  if (desc) desc.textContent = `${info.name} \u2014 ${info.desc}`;
   if (summary) {
     summary.innerHTML = `
       <div>
@@ -228,10 +244,10 @@ async function handleCheckoutSubmit(e) {
   }
 
   btn.disabled = true;
-  if (btnText) btnText.textContent = "決済ページを準備中...";
+  if (btnText) btnText.textContent = "PayPal決済ページを準備中...";
 
   try {
-    const resp = await fetch(`${API_BASE}/api/create-checkout`, {
+    const resp = await fetch(`${API_BASE}/api/create-paypal-order`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -249,12 +265,12 @@ async function handleCheckoutSubmit(e) {
       throw new Error(data.message || data.error);
     }
 
-    // Redirect to Stripe Checkout
-    window.location.href = data.checkout_url;
+    // Redirect to PayPal approval page
+    window.location.href = data.approval_url;
   } catch (err) {
     alert("決済の準備中にエラーが発生しました: " + err.message);
     btn.disabled = false;
-    if (btnText) btnText.textContent = "決済ページへ進む";
+    if (btnText) btnText.textContent = "PayPal決済ページへ進む";
   }
 }
 
@@ -353,10 +369,10 @@ function renderFullReport(data) {
 
   let recsHtml = recs.map(r => `
     <div class="rec-item ${r.priority || 'medium'}">
-      <div class="rec-cat">${r.category || ''} · ${r.priority === 'high' ? '高優先' : '中優先'}</div>
+      <div class="rec-cat">${r.category || ''} \u00b7 ${r.priority === 'high' ? '高優先' : '中優先'}</div>
       <div class="rec-title">${r.title}</div>
       <div class="rec-desc">${r.description}</div>
-      <div class="rec-meta">想定インパクト: ${r.impact || '-'} · 工数: ${r.effort || '-'}</div>
+      <div class="rec-meta">想定インパクト: ${r.impact || '-'} \u00b7 工数: ${r.effort || '-'}</div>
     </div>
   `).join("");
 
@@ -378,7 +394,7 @@ function renderFullReport(data) {
 
   const mode = s4.mode === "live" ? '<span style="color:#22c55e;font-size:12px;">\u25cf Live AI Analysis</span>' : '<span style="color:#f59e0b;font-size:12px;">\u25cf Demo Mode</span>';
 
-  const paymentInfo = data.payment ? `<div style="font-size:12px;color:var(--text-soft);margin-top:8px;">決済プラン: ${data.payment.plan} · ${data.payment.amount} ${data.payment.currency?.toUpperCase()}</div>` : '';
+  const paymentInfo = data.payment ? `<div style="font-size:12px;color:var(--text-soft);margin-top:8px;">決済プラン: ${data.payment.plan} \u00b7 \u00a5${data.payment.amount.toLocaleString()} ${data.payment.currency?.toUpperCase()} (PayPal)</div>` : '';
 
   section.innerHTML = `
     <div class="container">

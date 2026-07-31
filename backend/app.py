@@ -1,24 +1,24 @@
 """
 GEO MVP - Flask API Server
 Serves the Japanese landing page and handles GEO diagnosis API requests.
-Supports Stripe payment for premium reports.
+Supports PayPal payment for premium reports.
 
 Flow:
   /api/scan               - Free lightweight scan (Stage 1 only)
-  /api/create-checkout    - Create Stripe Checkout Session for paid plans
-  /api/verify-payment     - Verify Stripe payment and generate full report
-  /api/analyze            - Full analysis (legacy: lead-capture based, kept for backward compat)
+  /api/create-paypal-order - Create PayPal order for paid plans
+  /api/verify-payment     - Verify PayPal payment and generate full report
+  /api/analyze            - Full analysis (legacy: lead-capture based)
   /api/pricing            - Get pricing plans
-  /api/webhook/stripe     - Stripe webhook handler
 """
 import os
 import sys
 import json
 import re
-import hashlib
-import time
+import uuid
+import base64
+import requests as http_requests
 from datetime import datetime
-from flask import Flask, request, jsonify, send_from_directory, redirect
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 
 # Add backend dir to path for imports
@@ -26,20 +26,14 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from config import (
     FLASK_PORT, DEBUG_MODE, DEMO_MODE, APP_URL,
-    STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_CURRENCY,
+    PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET, PAYPAL_MODE,
+    PAYPAL_BASE_URL, PAYPAL_CURRENCY,
     PRICING_PLANS,
 )
 from engine.analyzer import GEOAnalyzer
 
-# === Stripe initialization ===
-STRIPE_AVAILABLE = False
-if STRIPE_SECRET_KEY:
-    try:
-        import stripe
-        stripe.api_key = STRIPE_SECRET_KEY
-        STRIPE_AVAILABLE = True
-    except ImportError:
-        pass
+# === PayPal availability check ===
+PAYPAL_AVAILABLE = bool(PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET)
 
 app = Flask(__name__, static_folder=None)
 CORS(app)
@@ -50,9 +44,85 @@ FRONTEND_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__fi
 # Lead storage (file-based for MVP)
 LEADS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "leads.json")
 
-# Payment verification store (file-based for MVP)
+# Order storage (file-based for MVP) — maps PayPal order_id to our metadata
+ORDERS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "orders.json")
+
+# Payment records
 PAYMENTS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "payments.json")
 
+
+# ==================== PayPal API Helpers ====================
+
+def _paypal_get_access_token() -> str:
+    """Get PayPal API access token using client credentials."""
+    url = f"{PAYPAL_BASE_URL}/v1/oauth2/token"
+    auth_str = f"{PAYPAL_CLIENT_ID}:{PAYPAL_CLIENT_SECRET}"
+    auth_b64 = base64.b64encode(auth_str.encode()).decode()
+    headers = {
+        "Authorization": f"Basic {auth_b64}",
+        "Content-Type": "application/x-www-form-urlencoded",
+    }
+    data = "grant_type=client_credentials"
+    resp = http_requests.post(url, headers=headers, data=data, timeout=30)
+    resp.raise_for_status()
+    return resp.json()["access_token"]
+
+
+def _paypal_create_order(amount: int, description: str, return_url: str,
+                         cancel_url: str, custom_ref: str) -> dict:
+    """Create a PayPal order. Returns the full order JSON including approval links."""
+    token = _paypal_get_access_token()
+    url = f"{PAYPAL_BASE_URL}/v2/checkout/orders"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+    }
+    body = {
+        "intent": "CAPTURE",
+        "purchase_units": [{
+            "amount": {
+                "currency_code": PAYPAL_CURRENCY,
+                "value": str(amount),
+            },
+            "description": description[:127],
+            "custom_id": custom_ref,
+        }],
+        "application_context": {
+            "return_url": return_url,
+            "cancel_url": cancel_url,
+            "user_action": "PAY_NOW",
+            "shipping_preference": "NO_SHIPPING",
+        }
+    }
+    resp = http_requests.post(url, headers=headers, json=body, timeout=30)
+    resp.raise_for_status()
+    return resp.json()
+
+
+def _paypal_capture_order(order_id: str) -> dict:
+    """Capture payment for a PayPal order. Returns the captured order JSON."""
+    token = _paypal_get_access_token()
+    url = f"{PAYPAL_BASE_URL}/v2/checkout/orders/{order_id}/capture"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+    }
+    resp = http_requests.post(url, headers=headers, timeout=30)
+    resp.raise_for_status()
+    return resp.json()
+
+
+def _paypal_get_order(order_id: str) -> dict:
+    """Get PayPal order details (without capturing)."""
+    token = _paypal_get_access_token()
+    url = f"{PAYPAL_BASE_URL}/v2/checkout/orders/{order_id}"
+    headers = {"Authorization": f"Bearer {token}"}
+    resp = http_requests.get(url, headers=headers, timeout=30)
+    resp.raise_for_status()
+    return resp.json()
+
+
+# ==================== Storage Helpers ====================
 
 def _save_lead(email: str, company: str, url: str, brand: str, plan: str = "free"):
     """Append lead to JSON file."""
@@ -76,17 +146,78 @@ def _save_lead(email: str, company: str, url: str, brand: str, plan: str = "free
         json.dump(leads, f, ensure_ascii=False, indent=2)
 
 
-def _save_payment(session_id: str, email: str, company: str, url: str, brand: str, plan: str, amount: int):
-    """Save verified payment record."""
+def _save_order(order_ref: str, paypal_order_id: str, email: str,
+                company: str, url: str, brand: str, plan: str, amount: int):
+    """Save order metadata for later verification."""
     record = {
-        "session_id": session_id,
+        "order_ref": order_ref,
+        "paypal_order_id": paypal_order_id,
         "email": email,
         "company": company,
         "url": url,
         "brand": brand,
         "plan": plan,
         "amount": amount,
-        "verified": False,
+        "status": "created",
+        "timestamp": datetime.now().isoformat(),
+    }
+    orders = []
+    if os.path.exists(ORDERS_FILE):
+        try:
+            with open(ORDERS_FILE, "r", encoding="utf-8") as f:
+                orders = json.load(f)
+        except (json.JSONDecodeError, IOError):
+            orders = []
+    orders.append(record)
+    with open(ORDERS_FILE, "w", encoding="utf-8") as f:
+        json.dump(orders, f, ensure_ascii=False, indent=2)
+
+
+def _get_order_by_ref(order_ref: str) -> dict:
+    """Get order metadata by reference ID."""
+    if not os.path.exists(ORDERS_FILE):
+        return None
+    try:
+        with open(ORDERS_FILE, "r", encoding="utf-8") as f:
+            orders = json.load(f)
+        for o in orders:
+            if o.get("order_ref") == order_ref:
+                return o
+    except (json.JSONDecodeError, IOError):
+        pass
+    return None
+
+
+def _update_order_status(order_ref: str, status: str):
+    """Update order status."""
+    if not os.path.exists(ORDERS_FILE):
+        return
+    try:
+        with open(ORDERS_FILE, "r", encoding="utf-8") as f:
+            orders = json.load(f)
+        for o in orders:
+            if o.get("order_ref") == order_ref:
+                o["status"] = status
+                o["updated_at"] = datetime.now().isoformat()
+        with open(ORDERS_FILE, "w", encoding="utf-8") as f:
+            json.dump(orders, f, ensure_ascii=False, indent=2)
+    except (json.JSONDecodeError, IOError):
+        pass
+
+
+def _save_payment(order_id: str, email: str, company: str, url: str,
+                  brand: str, plan: str, amount: int):
+    """Save verified payment record."""
+    record = {
+        "order_id": order_id,
+        "email": email,
+        "company": company,
+        "url": url,
+        "brand": brand,
+        "plan": plan,
+        "amount": amount,
+        "currency": "JPY",
+        "verified": True,
         "timestamp": datetime.now().isoformat(),
     }
     payments = []
@@ -99,21 +230,6 @@ def _save_payment(session_id: str, email: str, company: str, url: str, brand: st
     payments.append(record)
     with open(PAYMENTS_FILE, "w", encoding="utf-8") as f:
         json.dump(payments, f, ensure_ascii=False, indent=2)
-
-
-def _get_payment(session_id: str) -> dict:
-    """Get payment record by session_id."""
-    if not os.path.exists(PAYMENTS_FILE):
-        return None
-    try:
-        with open(PAYMENTS_FILE, "r", encoding="utf-8") as f:
-            payments = json.load(f)
-        for p in payments:
-            if p.get("session_id") == session_id:
-                return p
-    except (json.JSONDecodeError, IOError):
-        pass
-    return None
 
 
 def _is_valid_email(email: str) -> bool:
@@ -142,7 +258,8 @@ def health():
         "status": "ok",
         "mode": "demo" if DEMO_MODE else "live",
         "ai_provider": "deepseek" if not DEMO_MODE else "none",
-        "stripe_enabled": STRIPE_AVAILABLE,
+        "paypal_enabled": PAYPAL_AVAILABLE,
+        "paypal_mode": PAYPAL_MODE,
     })
 
 
@@ -152,7 +269,7 @@ def pricing():
     return jsonify({
         "plans": PRICING_PLANS,
         "currency": "JPY",
-        "stripe_enabled": STRIPE_AVAILABLE,
+        "paypal_enabled": PAYPAL_AVAILABLE,
     })
 
 
@@ -192,17 +309,17 @@ def scan():
         }), 500
 
 
-@app.route("/api/create-checkout", methods=["POST"])
-def create_checkout():
+@app.route("/api/create-paypal-order", methods=["POST"])
+def create_paypal_order():
     """
-    Create a Stripe Checkout Session for paid plans.
+    Create a PayPal order for paid plans.
     Expects: {"plan": "audit|pro|business", "url": "...", "brand_name": "...", "email": "...", "company_name": "..."}
-    Returns: {"checkout_url": "https://checkout.stripe.com/..."}
+    Returns: {"approval_url": "https://www.paypal.com/...", "order_id": "..."}
     """
-    if not STRIPE_AVAILABLE:
+    if not PAYPAL_AVAILABLE:
         return jsonify({
             "error": "payment_not_configured",
-            "message": "Stripe payment is not configured. Please contact support."
+            "message": "PayPal payment is not configured. Please contact support."
         }), 503
 
     data = request.get_json() or {}
@@ -227,53 +344,59 @@ def create_checkout():
     plan = PRICING_PLANS[plan_key]
 
     try:
-        # Create Stripe Checkout Session
-        # For JPY (zero-decimal currency), amount is in whole yen
-        session_params = {
-            "payment_method_types": ["card"],
-            "line_items": [{
-                "price_data": {
-                    "currency": STRIPE_CURRENCY,
-                    "product_data": {
-                        "name": f"AI GeoLens - {plan['name']}",
-                        "description": plan["description"],
-                    },
-                    "unit_amount": plan["price"],  # JPY is zero-decimal
-                },
-                "quantity": 1,
-            }],
-            "mode": "payment" if plan_key == "audit" else "subscription",
-            "success_url": f"{APP_URL}/payment-success.html?session_id={{CHECKOUT_SESSION_ID}}",
-            "cancel_url": f"{APP_URL}/payment-cancel.html",
-            "customer_email": email,
-            "metadata": {
-                "url": url[:500],
-                "brand_name": brand_name[:200],
-                "email": email,
-                "company_name": company_name[:200],
-                "plan": plan_key,
-            },
-            "allow_promotion_codes": True,
-        }
+        # Generate unique order reference for our internal tracking
+        order_ref = str(uuid.uuid4())[:8]
 
-        session = stripe.checkout.Session.create(**session_params)
+        # Build PayPal return/cancel URLs
+        return_url = f"{APP_URL}/payment-success.html?order_ref={order_ref}"
+        cancel_url = f"{APP_URL}/payment-cancel.html"
+
+        # Create PayPal order
+        description = f"AI GeoLens - {plan['name']}"
+        paypal_order = _paypal_create_order(
+            amount=plan["price"],
+            description=description,
+            return_url=return_url,
+            cancel_url=cancel_url,
+            custom_ref=order_ref,
+        )
+
+        paypal_order_id = paypal_order["id"]
+
+        # Find the approval URL
+        approval_url = None
+        for link in paypal_order.get("links", []):
+            if link.get("rel") == "approve":
+                approval_url = link["href"]
+                break
+
+        if not approval_url:
+            return jsonify({
+                "error": "paypal_no_approval_url",
+                "message": "PayPal did not return an approval URL."
+            }), 500
+
+        # Save order metadata locally
+        _save_order(order_ref, paypal_order_id, email, company_name,
+                    url, brand_name, plan_key, plan["price"])
 
         # Save lead
         _save_lead(email, company_name, url, brand_name, plan_key)
 
         return jsonify({
-            "checkout_url": session.url,
-            "session_id": session.id,
+            "approval_url": approval_url,
+            "order_id": paypal_order_id,
+            "order_ref": order_ref,
         })
 
-    except stripe.error.StripeError as e:
+    except http_requests.RequestException as e:
         return jsonify({
-            "error": "stripe_error",
+            "error": "paypal_api_error",
             "message": str(e),
         }), 500
     except Exception as e:
         return jsonify({
-            "error": "checkout_failed",
+            "error": "order_creation_failed",
             "message": str(e),
         }), 500
 
@@ -281,55 +404,94 @@ def create_checkout():
 @app.route("/api/verify-payment", methods=["POST"])
 def verify_payment():
     """
-    Verify Stripe payment and generate full GEO report.
-    Expects: {"session_id": "cs_test_..."}
+    Verify PayPal payment and generate full GEO report.
+    Expects: {"order_ref": "abc12345"} or {"order_id": "PAYPAL_ORDER_ID"}
     Returns: Full GEO diagnostic report JSON.
     """
-    if not STRIPE_AVAILABLE:
+    if not PAYPAL_AVAILABLE:
         return jsonify({"error": "payment_not_configured"}), 503
 
     data = request.get_json() or {}
-    session_id = data.get("session_id", "").strip()
+    order_ref = data.get("order_ref", "").strip()
+    order_id = data.get("order_id", "").strip()
 
-    if not session_id:
-        return jsonify({"error": "session_id_required"}), 400
+    # Look up order by ref or PayPal order ID
+    order_meta = None
+    if order_ref:
+        order_meta = _get_order_by_ref(order_ref)
+    elif order_id:
+        # Try to find by PayPal order ID
+        if os.path.exists(ORDERS_FILE):
+            try:
+                with open(ORDERS_FILE, "r", encoding="utf-8") as f:
+                    orders = json.load(f)
+                for o in orders:
+                    if o.get("paypal_order_id") == order_id:
+                        order_meta = o
+                        break
+            except (json.JSONDecodeError, IOError):
+                pass
+
+    if not order_meta:
+        return jsonify({"error": "order_not_found",
+                        "message": "Order reference not found."}), 404
 
     try:
-        # Retrieve the session from Stripe
-        session = stripe.checkout.Session.retrieve(session_id)
+        # Capture the payment via PayPal API
+        captured = _paypal_capture_order(order_meta["paypal_order_id"])
 
-        if session.payment_status != "paid":
+        # Check capture status
+        capture_status = captured.get("status", "")
+        if capture_status not in ("COMPLETED",):
             return jsonify({
                 "error": "payment_not_completed",
-                "message": "Payment has not been completed yet."
+                "message": f"Payment status is {capture_status}. Payment may still be processing."
             }), 402
 
-        # Extract metadata
-        metadata = session.metadata or {}
-        url = metadata.get("url", "")
-        brand_name = metadata.get("brand_name", "")
-        email = metadata.get("email", "")
-        company_name = metadata.get("company_name", "")
-        plan = metadata.get("plan", "audit")
+        # Extract payment details
+        purchase_units = captured.get("purchase_units", [])
+        capture_amount = 0
+        if purchase_units:
+            captures = purchase_units[0].get("payments", {}).get("captures", [])
+            if captures:
+                capture_amount = int(float(captures[0].get("amount", {}).get("value", 0)))
+
+        # Update order status
+        _update_order_status(order_meta["order_ref"], "paid")
 
         # Save payment record
-        _save_payment(session_id, email, company_name, url, brand_name, plan, session.amount_total)
+        _save_payment(
+            order_meta["paypal_order_id"],
+            order_meta["email"],
+            order_meta["company"],
+            order_meta["url"],
+            order_meta["brand"],
+            order_meta["plan"],
+            capture_amount or order_meta["amount"],
+        )
 
         # Generate full report
-        analyzer = GEOAnalyzer(url, brand_name)
+        analyzer = GEOAnalyzer(order_meta["url"], order_meta["brand"])
         result = analyzer.run_full_analysis()
-        result["lead"] = {"email": email, "company": company_name}
+        result["lead"] = {
+            "email": order_meta["email"],
+            "company": order_meta["company"],
+        }
         result["payment"] = {
-            "session_id": session_id,
-            "plan": plan,
-            "amount": session.amount_total,
-            "currency": session.currency,
+            "order_id": order_meta["paypal_order_id"],
+            "plan": order_meta["plan"],
+            "amount": capture_amount or order_meta["amount"],
+            "currency": "JPY",
+            "method": "paypal",
         }
 
         return jsonify(result)
 
-    except stripe.error.StripeError as e:
-        return jsonify({"error": "stripe_error", "message": str(e)}), 500
+    except http_requests.RequestException as e:
+        return jsonify({
+            "error": "paypal_capture_error",
+            "message": str(e),
+        }), 500
     except Exception as e:
         return jsonify({
             "error": "analysis_failed",
@@ -373,40 +535,6 @@ def analyze():
         return jsonify(result)
     except Exception as e:
         return jsonify({"error": "analysis_failed", "message": str(e)}), 500
-
-
-@app.route("/api/webhook/stripe", methods=["POST"])
-def stripe_webhook():
-    """Handle Stripe webhook events."""
-    if not STRIPE_AVAILABLE or not STRIPE_WEBHOOK_SECRET:
-        return jsonify({"error": "webhook_not_configured"}), 503
-
-    payload = request.get_data(as_text=True)
-    sig_header = request.headers.get("Stripe-Signature")
-
-    try:
-        event = stripe.Webhook.construct_event(
-            payload, sig_header, STRIPE_WEBHOOK_SECRET
-        )
-    except ValueError:
-        return jsonify({"error": "invalid_payload"}), 400
-    except stripe.error.SignatureVerificationError:
-        return jsonify({"error": "invalid_signature"}), 400
-
-    if event["type"] == "checkout.session.completed":
-        session = event["data"]["object"]
-        metadata = session.get("metadata", {})
-        _save_payment(
-            session["id"],
-            metadata.get("email", ""),
-            metadata.get("company_name", ""),
-            metadata.get("url", ""),
-            metadata.get("brand_name", ""),
-            metadata.get("plan", "audit"),
-            session.get("amount_total", 0),
-        )
-
-    return jsonify({"received": True})
 
 
 @app.route("/api/demo", methods=["GET"])
@@ -461,11 +589,11 @@ def demo_report():
 
 if __name__ == "__main__":
     mode_str = "DEMO MODE (no API key)" if DEMO_MODE else f"LIVE MODE (DeepSeek)"
-    stripe_str = "Stripe: ENABLED" if STRIPE_AVAILABLE else "Stripe: NOT CONFIGURED"
+    paypal_str = f"PayPal: ENABLED ({PAYPAL_MODE})" if PAYPAL_AVAILABLE else "PayPal: NOT CONFIGURED"
     print(f"\n{'='*50}")
     print(f"  GEO MVP Diagnostic Engine")
     print(f"  Mode: {mode_str}")
-    print(f"  Payment: {stripe_str}")
+    print(f"  Payment: {paypal_str}")
     print(f"  Port: {FLASK_PORT}")
     print(f"  Frontend: {FRONTEND_DIR}")
     print(f"{'='*50}\n")

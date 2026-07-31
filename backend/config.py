@@ -1,7 +1,7 @@
 """
 GEO MVP - Configuration
 Multi-AI model support: DeepSeek (primary), future: ChatGPT/Gemini/Perplexity/Claude
-Stripe payment integration for JPY pricing.
+PayPal payment integration for JPY pricing.
 """
 import os
 from dotenv import load_dotenv
@@ -18,16 +18,21 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 PERPLEXITY_API_KEY = os.getenv("PERPLEXITY_API_KEY", "")
 
-# === Stripe Payment ===
-STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
-STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
-STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY", "")
-STRIPE_CURRENCY = "jpy"  # JPY - zero decimal currency
+# === PayPal Payment ===
+PAYPAL_CLIENT_ID = os.getenv("PAYPAL_CLIENT_ID", "")
+PAYPAL_CLIENT_SECRET = os.getenv("PAYPAL_CLIENT_SECRET", "")
+PAYPAL_MODE = os.getenv("PAYPAL_MODE", "sandbox")  # "sandbox" or "live"
+PAYPAL_BASE_URL = (
+    "https://api-m.paypal.com"
+    if PAYPAL_MODE == "live"
+    else "https://api-m.sandbox.paypal.com"
+)
+PAYPAL_CURRENCY = "JPY"
 
 # === App Settings ===
 FLASK_PORT = int(os.getenv("PORT", 5000))
 DEBUG_MODE = os.getenv("DEBUG", "true").lower() == "true"
-APP_URL = os.getenv("APP_URL", "https://aigeolens.com")  # for Stripe redirect URLs
+APP_URL = os.getenv("APP_URL", "https://aigeolens.com")  # for PayPal redirect URLs
 
 # === Analysis Settings ===
 MAX_CONTENT_LENGTH = 8000  # chars sent to AI per request
@@ -43,11 +48,13 @@ DEMO_MODE = not DEEPSEEK_API_KEY  # auto-enable demo mode if no API key
 # - Entry competitors: $29-50/mo (Otterly, LLMClicks)
 # - Mid-tier competitors: $89-105/mo (Peec AI, Profound)
 # - Pro competitors: $199-299/mo (Writesonic, Clearscope)
+# All plans are one-time payments via PayPal (subscriptions coming soon)
 PRICING_PLANS = {
     "free": {
         "name": "フリースキャン",
         "price": 0,
         "description": "基本スキャン・GEOスコア",
+        "type": "free",
         "features": [
             "GEOスコア即時取得",
             "主要問題点TOP3",
@@ -58,8 +65,8 @@ PRICING_PLANS = {
     "audit": {
         "name": "お試し診断",
         "price": 4980,
-        "stripe_price_id": os.getenv("STRIPE_PRICE_AUDIT", ""),
         "description": "完全版GEO診断レポート（単発）",
+        "type": "one_time",
         "features": [
             "全25+因子の詳細分析",
             "DeepSeek AI可視性シミュレーション",
@@ -72,8 +79,8 @@ PRICING_PLANS = {
     "pro": {
         "name": "プロプラン",
         "price": 9800,
-        "stripe_price_id": os.getenv("STRIPE_PRICE_PRO", ""),
-        "description": "月次診断・継続モニタリング",
+        "description": "月次診断・継続モニタリング（1ヶ月分）",
+        "type": "one_time",
         "features": [
             "月10回の詳細診断",
             "継続的なAI可視性モニタリング",
@@ -85,8 +92,8 @@ PRICING_PLANS = {
     "business": {
         "name": "ビジネスプラン",
         "price": 29800,
-        "stripe_price_id": os.getenv("STRIPE_PRICE_BUSINESS", ""),
-        "description": "代理店・ホワイトラベル対応",
+        "description": "代理店・ホワイトラベル対応（1ヶ月分）",
+        "type": "one_time",
         "features": [
             "無制限の詳細診断",
             "5サイト監視",

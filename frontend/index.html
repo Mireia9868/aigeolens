@@ -105,7 +105,7 @@
         "name": "AI GeoLensの料金体系はどうなっていますか？",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "フリースキャン（¥0）で基本スコアと問題点TOP3を確認できます。完全版診断レポートは¥4,980（単発）、プロプランは¥9,800/月で月10回の詳細診断と継続モニタリング、ビジネスプランは¥29,800/月で無制限診断・API・ホワイトラベル対応。すべてクレジットカード決済（Stripe）に対応しています。"
+          "text": "フリースキャン（¥0）で基本スコアと問題点TOP3を確認できます。完全版診断レポートは¥4,980（単発）、プロプランは¥9,800/月で月10回の詳細診断と継続モニタリング、ビジネスプランは¥29,800/月で無制限診断・API・ホワイトラベル対応。お支払いはPayPal決済で、クレジットカード・デビットカード・PayPal残高に対応しています。"
         }
       },
       {
@@ -248,7 +248,7 @@
       <div class="step-card">
         <div class="num">2</div>
         <h3>プランを選択して決済</h3>
-        <p>完全版レポートは¥4,980から。Stripe決済で安全・簡単。メールアドレスと会社名を入力するだけ。</p>
+        <p>完全版レポートは¥4,980から。PayPal決済で安全・簡単。メールアドレスと会社名を入力するだけ。</p>
       </div>
       <div class="step-card">
         <div class="num">3</div>
@@ -346,7 +346,7 @@
       </div>
       <div class="price-card">
         <div class="plan">プロプラン</div>
-        <div class="price">¥9,800<small> /月</small></div>
+        <div class="price">¥9,800<small> /1ヶ月</small></div>
         <ul>
           <li>月10回の詳細診断</li>
           <li>継続的なAI可視性モニタリング</li>
@@ -358,7 +358,7 @@
       </div>
       <div class="price-card">
         <div class="plan">ビジネスプラン</div>
-        <div class="price">¥29,800<small> /月</small></div>
+        <div class="price">¥29,800<small> /1ヶ月</small></div>
         <ul>
           <li>無制限の詳細診断</li>
           <li>5サイト監視</li>
@@ -370,7 +370,7 @@
       </div>
     </div>
     <p class="pricing-note">
-      <small>※ 決済はStripeを通じて安全に処理されます。クレジットカード（Visa/Mastercard/Amex/JCB）・Apple Pay・Google Pay対応。</small>
+      <small>※ 決済はPayPalを通じて安全に処理されます。クレジットカード・デビットカード・PayPal残高に対応。世界200以上の国・地域で利用可能。</small>
     </p>
   </div>
 </section>
@@ -404,7 +404,7 @@
       </details>
       <details class="faq-item">
         <summary>料金体系と支払い方法を教えてください</summary>
-        <div class="answer">フリースキャンは¥0で何度でも利用可能です。完全版診断レポートは¥4,980（単発）、プロプランは¥9,800/月、ビジネスプランは¥29,800/月です。お支払いはStripe決済を通じて処理され、クレジットカード（Visa/Mastercard/Amex/JCB）、Apple Pay、Google Payに対応しています。サブスクリプションはいつでもキャンセル可能です。</div>
+        <div class="answer">フリースキャンは¥0で何度でも利用可能です。完全版診断レポートは¥4,980（単発）、プロプランは¥9,800（1ヶ月分）、ビジネスプランは¥29,800（1ヶ月分）です。お支払いはPayPal決済を通じて処理され、クレジットカード（Visa/Mastercard/Amex/JCB）、デビットカード、PayPal残高に対応しています。</div>
       </details>
       <details class="faq-item">
         <summary>無料スキャンと有料診断の違いは？</summary>
@@ -450,7 +450,7 @@
     </div>
     <div class="footer-bottom">
       <p>&copy; 2026 AI GeoLens. All rights reserved.</p>
-      <p>Powered by DeepSeek AI | 決済システム: Stripe</p>
+      <p>Powered by DeepSeek AI | 決済システム: PayPal</p>
     </div>
   </div>
 </footer>
@@ -486,12 +486,12 @@
         <input type="text" id="checkout-company" placeholder="株式会社〇〇" required autocomplete="organization">
       </div>
       <div class="checkout-summary" id="checkout-summary"></div>
-      <button type="submit" class="checkout-submit">
-        <span id="checkout-btn-text">決済ページへ進む</span>
+        <button type="submit" class="checkout-submit">
+        <span id="checkout-btn-text">PayPal決済ページへ進む</span>
       </button>
       <p class="checkout-note">
-        <span class="lock-icon">🔒</span> Stripe決済で安全に処理されます<br>
-        Visa / Mastercard / JCB / Amex / Apple Pay / Google Pay
+        <span class="lock-icon">🔒</span> PayPal決済で安全に処理されます<br>
+        クレジットカード / デビットカード / PayPal残高
       </p>
     </form>
   </div>
