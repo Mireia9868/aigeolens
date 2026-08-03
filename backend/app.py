@@ -81,7 +81,12 @@ def _paypal_get_access_token() -> str:
     }
     data = "grant_type=client_credentials"
     resp = http_requests.post(url, headers=headers, data=data, timeout=30)
-    resp.raise_for_status()
+    if not resp.ok:
+        error_detail = resp.text[:500]
+        raise http_requests.HTTPError(
+            f"{resp.status_code} PayPal Token Error: {error_detail}",
+            response=resp
+        )
     return resp.json()["access_token"]
 
 
@@ -112,7 +117,12 @@ def _paypal_create_order(amount: int, description: str, return_url: str,
         }
     }
     resp = http_requests.post(url, headers=headers, json=body, timeout=30)
-    resp.raise_for_status()
+    if not resp.ok:
+        error_detail = resp.text[:500]  # truncate for safety
+        raise http_requests.HTTPError(
+            f"{resp.status_code} PayPal Error: {error_detail}",
+            response=resp
+        )
     return resp.json()
 
 
