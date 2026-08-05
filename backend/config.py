@@ -76,7 +76,7 @@ PRICING_PLANS = {
     },
     "audit": {
         "name": "お試し診断",
-        "price": 4980,
+        "price": 498,
         "description": "完全版GEO診断レポート（単発）",
         "type": "one_time",
         "features": [

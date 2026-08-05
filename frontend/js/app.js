@@ -12,7 +12,7 @@ let lastReportData = null;
 
 // Plan display info
 const PLAN_INFO = {
-  audit: { name: "お試し診断", price: "¥4,980", desc: "完全版GEO診断レポート（単発）" },
+  audit: { name: "お試し診断", price: "¥498", desc: "完全版GEO診断レポート（単発・お試し価格）" },
   pro: { name: "プロプラン", price: "¥9,800", desc: "詳細診断3回＋競合分析パック（単発）" },
   business: { name: "ビジネスプラン", price: "¥29,800", desc: "代理店向けホワイトラベルレポート（単発）" },
 };
@@ -295,7 +295,7 @@ function renderScanResult(data) {
         <div class="locked-preview">
           <div class="locked-header">
             <h3>\ud83d\udd12 完全版GEO診断レポート</h3>
-            <span class="locked-tag">\u00a54,980\u301c</span>
+            <span class="locked-tag">\u00a5498\u301c</span>
           </div>
           <div class="preview-list">${previewHtml}</div>
         </div>
@@ -308,7 +308,7 @@ function renderScanResult(data) {
           <div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin-bottom:20px;">
             <button class="plan-select-btn" onclick="openCheckoutModal('audit')" style="background:#fff;color:var(--primary);border:none;padding:16px 28px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:all 0.2s;flex:1;min-width:180px;">
               <div style="font-size:13px;opacity:0.7;">単発</div>
-              <div style="font-size:20px;margin:4px 0;">\u00a54,980</div>
+              <div style="font-size:20px;margin:4px 0;">\u00a5498</div>
               <div style="font-size:12px;opacity:0.7;">完全版レポート</div>
             </button>
             <button class="plan-select-btn" onclick="openCheckoutModal('pro')" style="background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);padding:16px 28px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:all 0.2s;flex:1;min-width:180px;">

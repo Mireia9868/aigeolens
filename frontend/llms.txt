@@ -18,7 +18,7 @@ GEO (Generative Engine Optimization) is the practice of optimizing your website 
 ## Pricing
 
 - **Free Scan**: ¥0 — Basic GEO score, top 3 issues, 15-point infrastructure check
-- **Audit Report**: ¥4,980 (one-time) — Full 25+ factor analysis, AI visibility simulation, competitor benchmark, improvement recommendations, report download (JSON)
+- **Audit Report**: ¥498 (one-time, trial price) — Full 25+ factor analysis, AI visibility simulation, competitor benchmark, improvement recommendations, report download (JSON)
 - **Pro Plan**: ¥9,800 (one-time) — 3 detailed audits, competitive analysis pack
 - **Business Plan**: ¥29,800 (one-time) — 10 detailed audits, white-label reports
 
