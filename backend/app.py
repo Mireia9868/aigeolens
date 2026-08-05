@@ -332,6 +332,23 @@ def health():
     })
 
 
+@app.route("/api/test-paypal", methods=["GET"])
+def test_paypal():
+    """Test PayPal Live connectivity (temporary diagnostic endpoint)."""
+    if not PAYPAL_AVAILABLE:
+        return jsonify({"status": "error", "message": "PayPal not configured"}), 503
+    try:
+        token = _paypal_get_access_token()
+        return jsonify({
+            "status": "ok",
+            "message": "PayPal Live API connected successfully",
+            "token_prefix": token[:12] + "...",
+            "paypal_mode": PAYPAL_MODE,
+        })
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 502
+
+
 @app.route("/api/pricing", methods=["GET"])
 def pricing():
     """Return pricing plans."""
