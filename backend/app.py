@@ -348,12 +348,14 @@ def test_paypal():
 
     # Test 2: Create a test order (not captured - no charge)
     try:
+        plan_info = PRICING_PLANS["audit"]
+        amount = plan_info["price"]
         order = _paypal_create_order(
-            email="test@aigeolens.com",
-            company="Test Company",
-            url="https://example.com",
-            brand="Test Brand",
-            plan="audit",
+            amount=amount,
+            description=f"GEO Audit - {plan_info['name']}",
+            return_url=f"{APP_URL}/payment-success.html",
+            cancel_url=f"{APP_URL}/payment-cancel.html",
+            custom_ref="test-order-" + uuid.uuid4().hex[:8],
         )
         approval_url = next(
             (l["href"] for l in order.get("links", []) if l["rel"] == "approve"), None
