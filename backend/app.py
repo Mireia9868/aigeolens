@@ -335,18 +335,41 @@ def health():
 @app.route("/api/test-paypal", methods=["GET"])
 def test_paypal():
     """Test PayPal Live connectivity (temporary diagnostic endpoint)."""
+    result = {}
     if not PAYPAL_AVAILABLE:
         return jsonify({"status": "error", "message": "PayPal not configured"}), 503
+
+    # Test 1: Get access token
     try:
         token = _paypal_get_access_token()
-        return jsonify({
-            "status": "ok",
-            "message": "PayPal Live API connected successfully",
-            "token_prefix": token[:12] + "...",
-            "paypal_mode": PAYPAL_MODE,
-        })
+        result["token"] = {"status": "ok", "prefix": token[:12] + "..."}
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 502
+        return jsonify({"status": "error", "step": "token", "message": str(e)}), 502
+
+    # Test 2: Create a test order (not captured - no charge)
+    try:
+        order = _paypal_create_order(
+            email="test@aigeolens.com",
+            company="Test Company",
+            url="https://example.com",
+            brand="Test Brand",
+            plan="audit",
+        )
+        approval_url = next(
+            (l["href"] for l in order.get("links", []) if l["rel"] == "approve"), None
+        )
+        result["order"] = {
+            "status": "ok",
+            "order_id": order.get("id", "")[:20] + "...",
+            "approval_url": approval_url is not None,
+            "message": "Order created successfully",
+        }
+    except Exception as e:
+        result["order"] = {"status": "error", "message": str(e)}
+
+    result["paypal_mode"] = PAYPAL_MODE
+    result["status"] = "ok" if result.get("order", {}).get("status") == "ok" else "partial"
+    return jsonify(result)
 
 
 @app.route("/api/pricing", methods=["GET"])
